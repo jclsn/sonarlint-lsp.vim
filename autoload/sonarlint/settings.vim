@@ -10,3 +10,13 @@ export def AnalyzerJars(dirs: list<string>): list<string>
   endfor
   return jars->values()->sort()
 enddef
+
+# The "sonarlint" section of the workspace configuration.
+export def WorkspaceSettings(): dict<any>
+  var settings: dict<any> = {
+    disableTelemetry: true,
+    focusOnNewCode: false,
+    automaticAnalysis: true,
+  }
+  return settings
+enddef

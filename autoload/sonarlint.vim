@@ -6,3 +6,7 @@ import autoload 'sonarlint/settings.vim'
 export def AnalyzerJars(dirs: list<string>): list<string>
   return settings.AnalyzerJars(dirs)
 enddef
+
+export def WorkspaceSettings(): dict<any>
+  return settings.WorkspaceSettings()
+enddef
