@@ -37,10 +37,27 @@ def OnListFilesInFolder(lspserver: dict<any>, request: dict<any>)
   lspserver.sendResponse(request, {foundFiles: files}, {})
 enddef
 
+def IsGitIgnored(fname: string): bool
+  if !executable('git')
+    return false
+  endif
+  var dir = fname->fnamemodify(':h')
+  system($'git -C {shellescape(dir)} check-ignore -q -- {shellescape(fname)}')
+  return v:shell_error == 0
+enddef
+
+# Asked before files are re-analysed, e.g. after a settings change.
+def OnFilterOutExcludedFiles(lspserver: dict<any>, request: dict<any>)
+  var uris = utils.List(utils.Dict(request->get('params'))->get('fileUris'))
+  var kept = uris->copy()->filter((_, uri) => !IsGitIgnored(util.LspUriToFile(uri)))
+  lspserver.sendResponse(request, {fileUris: kept}, {})
+enddef
+
 export def Handlers(): dict<func>
   return {
     'sonarlint/isOpenInEditor': OnIsOpenInEditor,
     'sonarlint/listFilesInFolder': OnListFilesInFolder,
+    'sonarlint/filterOutExcludedFiles': OnFilterOutExcludedFiles,
     'sonarlint/canShowMissingRequirementsNotification': Respond('ERROR_ONLY'),
     'sonarlint/hasJoinedIdeLabs': Respond(false),
     'sonarlint/askSslCertificateConfirmation': Respond(false),

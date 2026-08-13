@@ -6,6 +6,10 @@ export def Dict(value: any): dict<any>
   return type(value) == v:t_dict ? value : {}
 enddef
 
+export def List(value: any): list<any>
+  return type(value) == v:t_list ? value : []
+enddef
+
 export def Str(d: dict<any>, key: string): string
   var value = d->get(key, '')
   return type(value) == v:t_string ? value : ''
