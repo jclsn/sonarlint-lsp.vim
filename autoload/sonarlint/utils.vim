@@ -1,6 +1,10 @@
 vim9script
 # Helpers shared by the sonarlint modules.
 
+import autoload 'lsp/util.vim'
+
+var warned: dict<bool> = {}
+
 # JSON values from the server may be null, so check the type before use.
 export def Dict(value: any): dict<any>
   return type(value) == v:t_dict ? value : {}
@@ -22,4 +26,11 @@ export def FirstParam(msg: dict<any>): any
     return params->empty() ? '' : params[0]
   endif
   return params
+enddef
+
+export def WarnOnce(key: string, msg: string)
+  if !warned->has_key(key)
+    warned[key] = true
+    util.WarnMsg($'SonarQube: {msg}')
+  endif
 enddef

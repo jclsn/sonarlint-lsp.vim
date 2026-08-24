@@ -1,11 +1,19 @@
 vim9script
 # Notifications sent by sonarlint-ls to the client.
 
+import autoload 'sonarlint/utils.vim'
+
 def Ignore(lspserver: dict<any>, reply: dict<any>)
 enddef
 
+def OnFirstSecret(lspserver: dict<any>, reply: dict<any>)
+  utils.WarnOnce('secret', 'a secret was found in an open file, see the diagnostics')
+enddef
+
 export def Handlers(): dict<func>
-  var handlers: dict<func> = {}
+  var handlers: dict<func> = {
+    'sonarlint/showNotificationForFirstSecretsIssue': OnFirstSecret,
+  }
   # Status and VS Code UI notifications that have no counterpart in Vim.
   for method in [
       'didChangePluginStatuses', 'doNotShowMissingRequirementsMessageAgain',
