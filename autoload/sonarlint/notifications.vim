@@ -3,6 +3,7 @@ vim9script
 
 import autoload 'lsp/util.vim'
 import autoload 'sonarlint/utils.vim'
+import autoload 'sonarlint/settings.vim'
 
 def Ignore(lspserver: dict<any>, reply: dict<any>)
 enddef
@@ -20,6 +21,7 @@ enddef
 
 export def Handlers(): dict<func>
   var handlers: dict<func> = {
+    'sonarlint/needCompilationDatabase': settings.OnNeedCompilationDatabase,
     'sonarlint/showNotificationForFirstSecretsIssue': OnFirstSecret,
     'sonarlint/browseTo': OnBrowseTo,
   }
