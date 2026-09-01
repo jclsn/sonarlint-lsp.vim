@@ -12,6 +12,10 @@ def OnFirstSecret(lspserver: dict<any>, reply: dict<any>)
   utils.WarnOnce('secret', 'a secret was found in an open file, see the diagnostics')
 enddef
 
+def OnInvalidToken(lspserver: dict<any>, reply: dict<any>)
+  utils.WarnOnce('token', 'the SonarQube token was rejected, check g:sonarqube_tokens or $SONAR_TOKEN')
+enddef
+
 def OnBrowseTo(lspserver: dict<any>, reply: dict<any>)
   var url = utils.FirstParam(reply)
   if type(url) == v:t_string && !url->empty()
@@ -23,6 +27,7 @@ export def Handlers(): dict<func>
   var handlers: dict<func> = {
     'sonarlint/needCompilationDatabase': settings.OnNeedCompilationDatabase,
     'sonarlint/showNotificationForFirstSecretsIssue': OnFirstSecret,
+    'sonarlint/notifyInvalidToken': OnInvalidToken,
     'sonarlint/browseTo': OnBrowseTo,
   }
   # Status and VS Code UI notifications that have no counterpart in Vim.

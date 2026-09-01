@@ -53,11 +53,20 @@ def OnFilterOutExcludedFiles(lspserver: dict<any>, request: dict<any>)
   lspserver.sendResponse(request, {fileUris: kept}, {})
 enddef
 
+def OnGetTokenForServer(lspserver: dict<any>, request: dict<any>)
+  var serverUrl = utils.FirstParam(request)
+  var tokens = utils.Dict(get(g:, 'sonarqube_tokens', {}))
+  var token = type(serverUrl) == v:t_string && tokens->has_key(serverUrl) ? tokens[serverUrl]
+    : !empty($SONAR_TOKEN) ? $SONAR_TOKEN : null
+  lspserver.sendResponse(request, token, {})
+enddef
+
 export def Handlers(): dict<func>
   return {
     'sonarlint/isOpenInEditor': OnIsOpenInEditor,
     'sonarlint/listFilesInFolder': OnListFilesInFolder,
     'sonarlint/filterOutExcludedFiles': OnFilterOutExcludedFiles,
+    'sonarlint/getTokenForServer': OnGetTokenForServer,
     'sonarlint/canShowMissingRequirementsNotification': Respond('ERROR_ONLY'),
     'sonarlint/hasJoinedIdeLabs': Respond(false),
     'sonarlint/askSslCertificateConfirmation': Respond(false),

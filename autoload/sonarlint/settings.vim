@@ -63,6 +63,10 @@ export def WorkspaceSettings(): dict<any>
   if !compileCommands->empty()
     settings.pathToCompileCommands = compileCommands
   endif
+  var connectedMode = get(g:, 'sonarqube_connected_mode', {})
+  if !connectedMode->empty()
+    settings.connectedMode = connectedMode
+  endif
   return settings
 enddef
 
