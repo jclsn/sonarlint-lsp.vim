@@ -2,6 +2,7 @@ vim9script
 # SonarQube for IDE (sonarlint-ls) client for yegappan/lsp.
 
 import autoload 'sonarlint/settings.vim'
+import autoload 'sonarlint/diagnostics.vim'
 import autoload 'sonarlint/requests.vim'
 import autoload 'sonarlint/notifications.vim'
 
@@ -15,6 +16,10 @@ enddef
 
 export def WorkspaceSettings(): dict<any>
   return settings.WorkspaceSettings()
+enddef
+
+export def ProcessDiags(diags: list<dict<any>>): list<dict<any>>
+  return diagnostics.ProcessDiags(diags)
 enddef
 
 export def NotificationHandlers(): dict<func>
