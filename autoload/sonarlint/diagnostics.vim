@@ -1,6 +1,7 @@
 vim9script
-# Diagnostics with their real severity.
+# Diagnostics, security hotspots and taint vulnerabilities.
 
+import autoload 'lsp/diag.vim'
 import autoload 'sonarlint/utils.vim'
 
 const SONAR_SOURCE = 'sonarqube'
@@ -27,4 +28,21 @@ export def ProcessDiags(diags: list<dict<any>>): list<dict<any>>
     endif
   endfor
   return diags
+enddef
+
+# A separate kind, so they don't replace the regular issues.
+def PublishExtraDiags(lspserver: dict<any>, reply: dict<any>, kind: string)
+  var params = utils.Dict(reply->get('params'))
+  if utils.Str(params, 'uri')->empty()
+    return
+  endif
+  diag.DiagNotification(lspserver, params.uri, utils.List(params->get('diagnostics')), kind)
+enddef
+
+export def OnPublishSecurityHotspots(lspserver: dict<any>, reply: dict<any>)
+  PublishExtraDiags(lspserver, reply, 'sonarlint-hotspots')
+enddef
+
+export def OnPublishTaintVulnerabilities(lspserver: dict<any>, reply: dict<any>)
+  PublishExtraDiags(lspserver, reply, 'sonarlint-taints')
 enddef
