@@ -5,6 +5,7 @@ import autoload 'lsp/util.vim'
 import autoload 'sonarlint/utils.vim'
 import autoload 'sonarlint/settings.vim'
 import autoload 'sonarlint/diagnostics.vim'
+import autoload 'sonarlint/popup.vim'
 
 def Ignore(lspserver: dict<any>, reply: dict<any>)
 enddef
@@ -26,6 +27,7 @@ enddef
 
 export def Handlers(): dict<func>
   var handlers: dict<func> = {
+    'sonarlint/showRuleDescription': popup.OnShowRuleDescription,
     'sonarlint/publishSecurityHotspots': diagnostics.OnPublishSecurityHotspots,
     'sonarlint/publishTaintVulnerabilities': diagnostics.OnPublishTaintVulnerabilities,
     'sonarlint/needCompilationDatabase': settings.OnNeedCompilationDatabase,
