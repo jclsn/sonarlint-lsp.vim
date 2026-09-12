@@ -9,6 +9,23 @@ const SONAR_SOURCE = 'sonarqube'
 const IMPACT_TO_LSP_SEVERITY = [4, 3, 2, 1, 1]
 const LSP_SEVERITY_HINT = 4
 
+# The Sonar diagnostic on the cursor line, preferring the one under the cursor.
+export def CursorIssue(lspserver: dict<any>): dict<any>
+  var diags = diag.GetDiagsByLine(bufnr(), line('.'), lspserver)
+    ->copy()
+    ->filter((_, d) => d->get('source', '') == SONAR_SOURCE)
+  if diags->empty()
+    return {}
+  endif
+  var col = charcol('.') - 1
+  for d in diags
+    if d.range.start.character <= col && col <= d.range.end.character
+      return d
+    endif
+  endfor
+  return diags[0]
+enddef
+
 export def ProcessDiags(diags: list<dict<any>>): list<dict<any>>
   for d in diags
     var code = d->get('code', '')

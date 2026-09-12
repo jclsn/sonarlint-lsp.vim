@@ -3,6 +3,7 @@ vim9script
 
 import autoload 'lsp/util.vim'
 import autoload 'sonarlint/utils.vim'
+import autoload 'sonarlint/server.vim'
 
 def Respond(value: any): func
   return (lspserver: dict<any>, request: dict<any>) => {
@@ -11,6 +12,7 @@ def Respond(value: any): func
 enddef
 
 def OnIsOpenInEditor(lspserver: dict<any>, request: dict<any>)
+  server.Remember(lspserver)
   var uri = utils.FirstParam(request)
   var fname = type(uri) == v:t_string ? util.LspUriToFile(uri) : ''
   var isOpen = !fname->empty() && fname->bufexists() && fname->bufnr()->bufloaded()
@@ -30,6 +32,7 @@ def ListFiles(root: string): list<string>
 enddef
 
 def OnListFilesInFolder(lspserver: dict<any>, request: dict<any>)
+  server.Remember(lspserver)
   var root = util.LspUriToFile(utils.Str(utils.Dict(request->get('params')), 'folderUri'))
   var files = ListFiles(root->substitute('/$', '', ''))
     ->filter((_, f) => f->filereadable())

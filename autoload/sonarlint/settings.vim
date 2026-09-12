@@ -71,6 +71,7 @@ export def WorkspaceSettings(): dict<any>
 enddef
 
 export def OnNeedCompilationDatabase(lspserver: dict<any>, reply: dict<any>)
+  server.Remember(lspserver)
   var found = CompileCommandsPath(expand('%:p:h'))
   if found->empty()
     utils.WarnOnce('compiledb', 'no compile_commands.json found, C/C++ files are not analysed'

@@ -3,6 +3,7 @@ vim9script
 
 import autoload 'lsp/options.vim' as opt
 import autoload 'sonarlint/utils.vim'
+import autoload 'sonarlint/server.vim'
 import autoload 'sonarlint/markdown.vim'
 
 # Sonar language keys whose Vim syntax has a different name.
@@ -149,6 +150,7 @@ def ShowMarkdownPopup(lines: list<string>)
 enddef
 
 export def OnShowRuleDescription(lspserver: dict<any>, reply: dict<any>)
+  server.Remember(lspserver)
   var rule = utils.Dict(reply->get('params'))
   if !rule->empty()
     ShowMarkdownPopup(RuleToMarkdown(rule))
