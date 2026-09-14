@@ -1,6 +1,7 @@
 vim9script
-# Workspace settings: analyzers and compilation database.
+# Workspace settings: analyzers, compilation database and rule overrides.
 
+import autoload 'lsp/util.vim'
 import autoload 'sonarlint/compiledb.vim'
 import autoload 'sonarlint/utils.vim'
 import autoload 'sonarlint/server.vim'
@@ -52,9 +53,51 @@ export def AnalyzerJars(dirs: list<string>): list<string>
   return jars->values()->sort()
 enddef
 
+def RulesFile(): string
+  var vimdir = empty($MYVIMDIR) ? expand('~/.vim/') : $MYVIMDIR
+  return get(g:, 'sonarlint_rules_file', $'{vimdir}sonarlint-rules.json')
+enddef
+
+# Rule overrides as understood by sonarlint-ls: {"cpp:S1234": {"level": "off"}}
+export def LoadRules(): dict<any>
+  var file = RulesFile()
+  if !file->filereadable()
+    return {}
+  endif
+  try
+    return utils.Dict(file->readfile()->join("\n")->json_decode())
+  catch
+    util.ErrMsg($'SonarQube: cannot read {file}: {v:exception}')
+    return {}
+  endtry
+enddef
+
+# One rule per line keeps the file easy to diff.
+def SaveRules(rules: dict<any>)
+  var keys = rules->keys()->sort()
+  var lines = keys->mapnew((i, key) => $'  {json_encode(key)}: {json_encode(rules[key])}'
+    .. (i < keys->len() - 1 ? ',' : ''))
+  writefile(['{'] + lines + ['}'], RulesFile())
+enddef
+
+export def SetRuleLevel(ruleKey: string, level: string)
+  var rules = LoadRules()
+  rules[ruleKey] = {level: level}
+  SaveRules(rules)
+
+  var lspserver = server.Get()
+  if !lspserver->empty()
+    var settings = server.Settings(lspserver)
+    settings.rules = rules
+    lspserver.sendWorkspaceConfig()
+  endif
+  util.InfoMsg($'SonarQube: rule {ruleKey} turned {level}')
+enddef
+
 # The "sonarlint" section of the workspace configuration.
 export def WorkspaceSettings(): dict<any>
   var settings: dict<any> = {
+    rules: LoadRules(),
     disableTelemetry: true,
     focusOnNewCode: false,
     automaticAnalysis: true,

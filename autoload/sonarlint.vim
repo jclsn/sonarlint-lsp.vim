@@ -21,6 +21,10 @@ export def WorkspaceSettings(): dict<any>
   return settings.WorkspaceSettings()
 enddef
 
+export def LoadRules(): dict<any>
+  return settings.LoadRules()
+enddef
+
 export def ProcessDiags(diags: list<dict<any>>): list<dict<any>>
   return diagnostics.ProcessDiags(diags)
 enddef
@@ -56,7 +60,29 @@ export def ShowRule(ruleKey: string = '')
   })
 enddef
 
+export def RuleLevel(level: string, ruleKey: string = '')
+  var key = ruleKey
+  var lspserver = server.Get()
+  if key->empty() && !lspserver->empty()
+    var code = diagnostics.CursorIssue(lspserver)->get('code', '')
+    key = type(code) == v:t_string ? code : ''
+  endif
+  if key->empty()
+    util.WarnMsg('SonarQube: no issue on the current line')
+    return
+  endif
+  settings.SetRuleLevel(key, level)
+enddef
+
+export def CompleteRules(arglead: string, cmdline: string, cursorpos: number): list<string>
+  return settings.LoadRules()->keys()->sort()->filter((_, k) => k->stridx(arglead) == 0)
+enddef
+
 # Called on the LspSetup event.
 export def Setup()
   command! -nargs=? SonarLintRule sonarlint#ShowRule(<q-args>)
+  command! -nargs=? -complete=customlist,sonarlint#CompleteRules SonarLintRuleDisable
+        \ sonarlint#RuleLevel('off', <q-args>)
+  command! -nargs=? -complete=customlist,sonarlint#CompleteRules SonarLintRuleEnable
+        \ sonarlint#RuleLevel('on', <q-args>)
 enddef
