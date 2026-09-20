@@ -6,6 +6,7 @@ import autoload 'sonarlint/utils.vim'
 import autoload 'sonarlint/server.vim'
 import autoload 'sonarlint/settings.vim'
 import autoload 'sonarlint/diagnostics.vim'
+import autoload 'sonarlint/codeaction.vim'
 import autoload 'sonarlint/requests.vim'
 import autoload 'sonarlint/notifications.vim'
 
@@ -80,6 +81,8 @@ enddef
 
 # Called on the LspSetup event.
 export def Setup()
+  g:LspRegisterCmdHandler('SonarLint.DeactivateRule', codeaction.CmdDeactivateRule)
+
   command! -nargs=? SonarLintRule sonarlint#ShowRule(<q-args>)
   command! -nargs=? -complete=customlist,sonarlint#CompleteRules SonarLintRuleDisable
         \ sonarlint#RuleLevel('off', <q-args>)
