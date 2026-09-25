@@ -82,6 +82,7 @@ enddef
 # Called on the LspSetup event.
 export def Setup()
   g:LspRegisterCmdHandler('SonarLint.DeactivateRule', codeaction.CmdDeactivateRule)
+  g:LspRegisterCmdHandler('SonarLint.ShowAllLocations', codeaction.CmdShowAllLocations)
 
   command! -nargs=? SonarLintRule sonarlint#ShowRule(<q-args>)
   command! -nargs=? -complete=customlist,sonarlint#CompleteRules SonarLintRuleDisable

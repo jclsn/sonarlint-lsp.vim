@@ -19,6 +19,11 @@ export def Str(d: dict<any>, key: string): string
   return type(value) == v:t_string ? value : ''
 enddef
 
+export def Num(d: dict<any>, key: string, fallback: number): number
+  var value = d->get(key, fallback)
+  return type(value) == v:t_number ? value : fallback
+enddef
+
 # Parameters of single-argument requests arrive either bare or in a list.
 export def FirstParam(msg: dict<any>): any
   var params = msg->get('params', '')
