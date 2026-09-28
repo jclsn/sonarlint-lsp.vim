@@ -1,6 +1,7 @@
 vim9script
 # SonarQube for IDE (sonarlint-ls) client for yegappan/lsp.
 
+import autoload 'lsp/buffer.vim' as buf
 import autoload 'lsp/util.vim'
 import autoload 'sonarlint/utils.vim'
 import autoload 'sonarlint/server.vim'
@@ -89,4 +90,12 @@ export def Setup()
         \ sonarlint#RuleLevel('off', <q-args>)
   command! -nargs=? -complete=customlist,sonarlint#CompleteRules SonarLintRuleEnable
         \ sonarlint#RuleLevel('on', <q-args>)
+enddef
+
+# Called on the LspAttached event.
+export def Attach()
+  var lspserver = buf.CurbufGetServerByName(server.NAME)
+  if !lspserver->empty()
+    codeaction.WrapRequests(lspserver)
+  endif
 enddef

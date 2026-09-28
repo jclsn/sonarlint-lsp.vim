@@ -2,12 +2,14 @@ vim9script
 # The sonarlint-ls server object.
 
 import autoload 'lsp/buffer.vim' as buf
+import autoload 'sonarlint/codeaction.vim'
 
 export const NAME = 'sonarlint-ls'
 var lastServer: dict<any> = {}
 
 export def Remember(lspserver: dict<any>)
   lastServer = lspserver
+  codeaction.WrapRequests(lspserver)
 enddef
 
 # Command handlers do not get the server object.

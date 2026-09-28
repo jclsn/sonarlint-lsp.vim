@@ -9,4 +9,5 @@ g:loaded_sonarlint_lsp = true
 augroup SonarLintLsp
   autocmd!
   autocmd User LspSetup sonarlint#Setup()
+  autocmd User LspAttached sonarlint#Attach()
 augroup END

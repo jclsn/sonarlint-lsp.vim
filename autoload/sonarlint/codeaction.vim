@@ -51,3 +51,68 @@ export def CmdShowAllLocations(cmd: dict<any>)
   setloclist(0, [], ' ', {title: $'SonarQube: {ruleKey}', items: items})
   :lopen
 enddef
+
+# The edits of a quickfix are relative to the original text, so merge them.
+def MergeDocumentEdits(edit: dict<any>)
+  var changes = utils.List(edit->get('documentChanges'))
+  if changes->len() < 2
+    return
+  endif
+  var merged: list<dict<any>> = []
+  var byUri: dict<dict<any>> = {}
+  for change in changes
+    var docEdit = utils.Dict(change)
+    var uri = utils.Str(utils.Dict(docEdit->get('textDocument')), 'uri')
+    if docEdit->has_key('kind') || uri->empty()
+      # File operations must keep their order relative to the text edits.
+      merged->add(docEdit)
+      byUri = {}
+    elseif byUri->has_key(uri)
+      byUri[uri].edits->extend(utils.List(docEdit->get('edits')))
+    else
+      var first = docEdit->copy()
+      first.edits = utils.List(docEdit->get('edits'))->copy()
+      byUri[uri] = first
+      merged->add(first)
+    endif
+  endfor
+  edit.documentChanges = merged
+enddef
+
+def FixCodeActions(actions: any)
+  for item in utils.List(actions)
+    var action = utils.Dict(item)
+    var edit = utils.Dict(action->get('edit'))
+    if !edit->empty()
+      MergeDocumentEdits(edit)
+    endif
+  endfor
+enddef
+
+# yegappan/lsp has no hook for code action replies.
+export def WrapRequests(lspserver: dict<any>)
+  if lspserver->get('sonarlintWrapped', false)
+    return
+  endif
+  lspserver.sonarlintWrapped = true
+
+  var Rpc = lspserver.rpc
+  lspserver.rpc = (method: string, params: any, ...rest: list<any>): dict<any> => {
+    var reply = call(Rpc, [method, params] + rest)
+    if method == 'textDocument/codeAction'
+      FixCodeActions(utils.Dict(reply)->get('result'))
+    endif
+    return reply
+  }
+
+  var RpcAsync = lspserver.rpc_a
+  lspserver.rpc_a = (method: string, params: any, Cbfunc: func): number => {
+    if method != 'textDocument/codeAction'
+      return RpcAsync(method, params, Cbfunc)
+    endif
+    return RpcAsync(method, params, (srv: dict<any>, result: any, err: dict<any>) => {
+      FixCodeActions(result)
+      Cbfunc(srv, result, err)
+    })
+  }
+enddef
