@@ -85,6 +85,10 @@ def FixCodeActions(actions: any)
     var edit = utils.Dict(action->get('edit'))
     if !edit->empty()
       MergeDocumentEdits(edit)
+      action.kind = 'quickfix'
+      action.isPreferred = true
+    elseif action->get('kind', '') == 'quickfix'
+      action->remove('kind')
     endif
   endfor
 enddef
