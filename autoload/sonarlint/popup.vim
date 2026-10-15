@@ -117,6 +117,17 @@ def RulePopupClosed(winid: number, result: any)
   endif
 enddef
 
+# Other popups at the cursor would overlap the rule popup.
+def OtherPopupsClose()
+  for winid in popup_list()
+    var info = getwininfo(winid)->get(0, {})
+    if winid != rulePopup && popup_getpos(winid)->get('visible', false)
+        && !info->get('terminal', false)
+      winid->popup_close()
+    endif
+  endfor
+enddef
+
 def RulePopupFilter(winid: number, key: string): bool
   if POPUP_SCROLL_KEYS->index(key) != -1
     win_execute(winid, $'normal! {key}')
@@ -130,6 +141,7 @@ enddef
 
 def ShowMarkdownPopup(lines: list<string>)
   RulePopupClose()
+  OtherPopupsClose()
   var popupAttrs = opt.PopupConfigure('Hover', {
     moved: 'any',
     close: 'click',
