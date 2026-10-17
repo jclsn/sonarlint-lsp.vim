@@ -103,6 +103,7 @@ up in this order:
 
 | Command | Description |
 | --- | --- |
+| `:SonarLintInfo` | Show the server state, analyzers, compilation database, rules and recent errors |
 | `:SonarLintRule [key]` | Show the rule of the issue under the cursor, or the given rule |
 | `:SonarLintRuleDisable [key]` | Turn a rule off |
 | `:SonarLintRuleEnable [key]` | Turn a rule on |

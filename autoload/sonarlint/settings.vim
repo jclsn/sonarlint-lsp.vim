@@ -53,7 +53,7 @@ export def AnalyzerJars(dirs: list<string>): list<string>
   return jars->values()->sort()
 enddef
 
-def RulesFile(): string
+export def RulesFile(): string
   var vimdir = empty($MYVIMDIR) ? expand('~/.vim/') : $MYVIMDIR
   return get(g:, 'sonarlint_rules_file', $'{vimdir}sonarlint-rules.json')
 enddef

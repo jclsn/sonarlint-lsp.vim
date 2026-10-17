@@ -8,6 +8,7 @@ import autoload 'sonarlint/server.vim'
 import autoload 'sonarlint/settings.vim'
 import autoload 'sonarlint/diagnostics.vim'
 import autoload 'sonarlint/codeaction.vim'
+import autoload 'sonarlint/info.vim'
 import autoload 'sonarlint/requests.vim'
 import autoload 'sonarlint/notifications.vim'
 
@@ -80,11 +81,16 @@ export def CompleteRules(arglead: string, cmdline: string, cursorpos: number): l
   return settings.LoadRules()->keys()->sort()->filter((_, k) => k->stridx(arglead) == 0)
 enddef
 
+export def Info()
+  info.Show()
+enddef
+
 # Called on the LspSetup event.
 export def Setup()
   g:LspRegisterCmdHandler('SonarLint.DeactivateRule', codeaction.CmdDeactivateRule)
   g:LspRegisterCmdHandler('SonarLint.ShowAllLocations', codeaction.CmdShowAllLocations)
 
+  command! SonarLintInfo sonarlint#Info()
   command! -nargs=? SonarLintRule sonarlint#ShowRule(<q-args>)
   command! -nargs=? -complete=customlist,sonarlint#CompleteRules SonarLintRuleDisable
         \ sonarlint#RuleLevel('off', <q-args>)
