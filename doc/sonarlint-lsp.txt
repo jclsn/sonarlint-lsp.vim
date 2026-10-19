@@ -130,9 +130,15 @@ g:sonarqube_connected_mode
     passes its "connections" on to the server: >vim
 
     g:sonarqube_connected_mode = {
-      connections: {sonarqube: [{connectionId: 'work',
-                                 serverUrl: 'https://sonar.example.com'}]},
-      project: {connectionId: 'work', projectKey: 'my-project'},
+      connections: {sonarqube: [{
+        connectionId: 'work',
+        serverUrl: 'https://sonar.example.com'
+      }]
+    },
+      project: {
+        connectionId: 'work',
+        projectKey: 'my-project'
+      }
     }
 <
                                                          *g:sonarqube_tokens*
