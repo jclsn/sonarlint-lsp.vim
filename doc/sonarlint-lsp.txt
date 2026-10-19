@@ -1,0 +1,156 @@
+*sonarlint-lsp.txt*  SonarQube for IDE (sonarlint-ls) support for yegappan/lsp
+
+==============================================================================
+CONTENTS                                              *sonarlint-lsp-contents*
+
+    1. Introduction ............ |sonarlint-lsp-intro|
+    2. Setup ................... |sonarlint-lsp-setup|
+    3. Functions ............... |sonarlint-lsp-functions|
+    4. Commands ................ |sonarlint-lsp-commands|
+    5. Options ................. |sonarlint-lsp-options|
+    6. Compilation database .... |sonarlint-lsp-compiledb|
+
+==============================================================================
+1. Introduction                                          *sonarlint-lsp-intro*
+
+sonarlint-ls only uses plain LSP for document synchronization, diagnostics
+and code actions. Everything else goes through "sonarlint/*" messages written
+for the VS Code extension. This plugin translates them for yegappan/lsp:
+
+- Issues get their real severity instead of always "warning".
+- Security hotspots and taint vulnerabilities are shown as diagnostics.
+- Rule descriptions open in a popup styled like the LSP hover popup.
+- Quickfixes are offered through |:LspCodeAction|.
+- The client-side commands and requests of the server are handled.
+
+Requirements: Vim 9.1 with |+vim9script|, yegappan/lsp, sonarlint-ls with its
+analyzer jars and Java 17 or later. The C/C++ analyzer is downloaded by
+sonarlint-ls itself on first use.
+
+==============================================================================
+2. Setup                                                 *sonarlint-lsp-setup*
+
+The plugin does not register the server. Add it to yegappan/lsp: >vim
+
+    vim9script
+    var sonarlint = {
+      name: 'sonarlint-ls',
+      path: 'sonarlint-ls',
+      filetype: ['c', 'cpp', 'python'],
+      args: ['-stdio', '-analyzers']
+        + sonarlint#AnalyzerJars(['/usr/share/java/sonarlint-ls/analyzers']),
+      processDiagHandler: function('sonarlint#ProcessDiags'),
+      customNotificationHandlers: sonarlint#NotificationHandlers(),
+      customRequestHandlers: sonarlint#RequestHandlers(),
+      workspaceConfig: {sonarlint: sonarlint#WorkspaceSettings()},
+      initializationOptions: {
+        rules: sonarlint#LoadRules(),
+        connections: get(g:, 'sonarqube_connected_mode', {})
+          ->get('connections', {}),
+      },
+    }
+    autocmd User LspSetup g:LspAddServer([sonarlint])
+<
+The JVM takes a few seconds to start, so leave "syncInit" off.
+
+==============================================================================
+3. Functions                                         *sonarlint-lsp-functions*
+
+                                                    *sonarlint#AnalyzerJars()*
+sonarlint#AnalyzerJars({dirs})
+    Return all "*.jar" files in the list {dirs}. A jar in an earlier
+    directory wins over one with the same name in a later directory.
+    Missing jars must not be passed: sonarlint-ls then loads no analyzer.
+
+                                                    *sonarlint#ProcessDiags()*
+sonarlint#ProcessDiags({diags})
+    The "processDiagHandler". Maps the Sonar impact to the LSP severity
+    and appends the rule key to the message.
+
+                                            *sonarlint#NotificationHandlers()*
+                                                 *sonarlint#RequestHandlers()*
+sonarlint#NotificationHandlers()
+sonarlint#RequestHandlers()
+    Handlers for the "sonarlint/*" notifications and requests.
+
+                                               *sonarlint#WorkspaceSettings()*
+sonarlint#WorkspaceSettings()
+    The "sonarlint" section of the workspace configuration, including the
+    compilation database and the rule overrides.
+
+                                                       *sonarlint#LoadRules()*
+sonarlint#LoadRules()
+    The rule overrides from |g:sonarlint_rules_file|.
+
+                                            *sonarlint#compiledb#FindDir()*
+sonarlint#compiledb#FindDir([{dirs}])
+    Return the absolute directory of the first "compile_commands.json" in
+    {dirs}, default ".", "build/Release" and "build/Debug". Return an empty
+    string if there is none. Useful to give clangd the same database.
+
+==============================================================================
+4. Commands                                           *sonarlint-lsp-commands*
+
+                                                              *:SonarLintInfo*
+:SonarLintInfo
+    Show the server state, the analyzer jars, the compilation database,
+    the rule overrides, the issues of the buffer and recent server errors.
+
+                                                              *:SonarLintRule*
+:SonarLintRule [key]
+    Show the rule of the issue under the cursor, or the rule [key], in a
+    popup. Scroll with CTRL-D, CTRL-U, CTRL-F, CTRL-B, CTRL-E, CTRL-Y,
+    <PageDown> and <PageUp>. <Esc> closes it.
+
+                                                       *:SonarLintRuleDisable*
+                                                        *:SonarLintRuleEnable*
+:SonarLintRuleDisable [key]
+:SonarLintRuleEnable [key]
+    Turn off or on the rule [key], or the rule of the issue under the
+    cursor. The change is saved and sent to the server right away. The
+    code action "Deactivate rule" does the same.
+
+==============================================================================
+5. Options                                             *sonarlint-lsp-options*
+
+                                                *g:sonarlint_compile_commands*
+g:sonarlint_compile_commands
+    Path of the "compile_commands.json" to use. Default: searched, see
+    |sonarlint-lsp-compiledb|.
+
+                                                      *g:sonarlint_rules_file*
+g:sonarlint_rules_file
+    File for the rule overrides.
+    Default: "$MYVIMDIR/sonarlint-rules.json"
+
+                                                  *g:sonarqube_connected_mode*
+g:sonarqube_connected_mode
+    Bind the project to SonarQube Server or SonarQube Cloud. Set it before
+    the server configuration is created; the |sonarlint-lsp-setup| example
+    passes its "connections" on to the server: >vim
+
+    g:sonarqube_connected_mode = {
+      connections: {sonarqube: [{connectionId: 'work',
+                                 serverUrl: 'https://sonar.example.com'}]},
+      project: {connectionId: 'work', projectKey: 'my-project'},
+    }
+<
+                                                         *g:sonarqube_tokens*
+g:sonarqube_tokens
+    Tokens by server URL. Falls back to $SONAR_TOKEN.
+
+==============================================================================
+6. Compilation database                              *sonarlint-lsp-compiledb*
+
+C and C++ files are only analysed with a "compile_commands.json". It is
+looked up in this order:
+
+1. |g:sonarlint_compile_commands|
+2. |sonarlint#compiledb#FindDir()|, relative to the working directory
+3. the directory of the current file and its "build", "build/Release" and
+   "build/Debug" directories, then the same in every parent directory
+
+If sonarlint-ls asks for a database later, it is searched again from the
+current file. CMake writes one with -DCMAKE_EXPORT_COMPILE_COMMANDS=ON.
+
+ vim:tw=78:ts=8:noet:ft=help:norl:
