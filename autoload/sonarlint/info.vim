@@ -67,10 +67,10 @@ def AnalyzerSection(lspserver: dict<any>): list<string>
   return lines
 enddef
 
-def CompileCommandsSection(lspserver: dict<any>): list<string>
+def CompileCommandsSection(lspserver: dict<any>, bnr: number): list<string>
   var lines = ['Compilation database']
   var inUse = lspserver->empty() ? '' : utils.Str(server.Settings(lspserver), 'pathToCompileCommands')
-  var found = settings.CompileCommandsPath(expand('%:p:h'))
+  var found = settings.CompileCommandsPath(bnr->bufname()->fnamemodify(':p:h'))
   if inUse->empty()
     lines->add(Field('in use', '✗ none'))
   else
@@ -119,8 +119,27 @@ def BufferSection(bnr: number): list<string>
   return lines
 enddef
 
+# Break {text} at whitespace so that no line is wider than {width}, indenting
+# the continuation lines by {indent} columns.
+def Wrap(text: string, width: number, indent: number): list<string>
+  var lines: list<string> = []
+  var prefix = '  '
+  var rest = text
+  while prefix->strcharlen() + rest->strcharlen() > width
+    var room = max([width - prefix->strcharlen(), 1])
+    var cut = rest->strcharpart(0, room + 1)->match('.*\zs\s')
+    if cut <= 0
+      cut = rest->strcharpart(0, room)->len()
+    endif
+    lines->add(prefix .. rest->strpart(0, cut))
+    rest = rest->strpart(cut)->substitute('^\s\+', '', '')
+    prefix = repeat(' ', indent)
+  endwhile
+  return lines + [prefix .. rest]
+enddef
+
 # sonarlint-ls logs everything as "Log" and puts the level into the message.
-def LogSection(lspserver: dict<any>): list<string>
+def LogSection(lspserver: dict<any>, width: number): list<string>
   var lines = ['Recent errors and warnings']
   var messages = lspserver->empty() ? [] : lspserver.messages
     ->copy()
@@ -140,48 +159,54 @@ def LogSection(lspserver: dict<any>): list<string>
   if unique->empty()
     lines->add('  none')
   endif
-  return lines + unique[-MAX_LOG_LINES :]->map((_, m) => $'  {m}')
+  for m in unique[-MAX_LOG_LINES :]
+    # Continuation lines start below the text after the timestamp and level.
+    lines->extend(Wrap(m, width, 2 + m->matchstr('^\S\+ \S\+ \a\+: ')->strcharlen()))
+  endfor
+  return lines
 enddef
 
-def Report(lspserver: dict<any>, bnr: number): list<string>
+def Report(lspserver: dict<any>, bnr: number, width: number): list<string>
   var title = 'SonarQube for IDE (sonarlint-ls)'
   var lines = [title, repeat('=', title->strcharlen()), '']
   for section in [ServerSection(lspserver), AnalyzerSection(lspserver),
-      CompileCommandsSection(lspserver), RulesSection(), BufferSection(bnr),
-      LogSection(lspserver)]
+      CompileCommandsSection(lspserver, bnr), RulesSection(), BufferSection(bnr),
+      LogSection(lspserver, width)]
     lines->extend(section + [''])
   endfor
   return lines[: -2]
 enddef
 
 export def Show()
-  var lines = Report(server.Get(), bufnr())
+  var lspserver = server.Get()
+  var bnr = bufnr()
   var old = bufnr(BUFNAME)
   # Refresh a visible report in place, keeping its split and size.
   var winid = old > 0 ? bufwinid(old) : -1
-  if winid > 0
-    setbufvar(old, '&modifiable', true)
-    setbufline(old, 1, lines)
-    if getbufinfo(old)[0].linecount > lines->len()
-      deletebufline(old, lines->len() + 1, '$')
+  if winid < 0
+    if old > 0
+      execute $'bwipeout {old}'
     endif
-    setbufvar(old, '&modifiable', false)
-    win_execute(winid, 'normal! gg')
-    return
+    botright vertical new
+    setlocal buftype=nofile bufhidden=wipe noswapfile nobuflisted nowrap nomodifiable
+    execute $'silent file {BUFNAME}'
+    nnoremap <buffer> <silent> q <Cmd>close<CR>
+    syntax match SonarLintInfoTitle /^\S.*$/
+    syntax match SonarLintInfoBad /✗.*$/
+    syntax match SonarLintInfoGood /✓/
+    highlight default link SonarLintInfoTitle Title
+    highlight default link SonarLintInfoBad ErrorMsg
+    highlight default link SonarLintInfoGood DiffAdd
+    old = bufnr()
+    winid = win_getid()
   endif
-  if old > 0
-    execute $'bwipeout {old}'
+  var info = getwininfo(winid)[0]
+  var lines = Report(lspserver, bnr, info.width - info.textoff)
+  setbufvar(old, '&modifiable', true)
+  setbufline(old, 1, lines)
+  if getbufinfo(old)[0].linecount > lines->len()
+    deletebufline(old, lines->len() + 1, '$')
   endif
-  execute $'botright vertical :new'
-  setlocal buftype=nofile bufhidden=wipe noswapfile nobuflisted nowrap
-  execute $'silent file {BUFNAME}'
-  setline(1, lines)
-  setlocal nomodifiable
-  nnoremap <buffer> <silent> q <Cmd>close<CR>
-  syntax match SonarLintInfoTitle /^\S.*$/
-  syntax match SonarLintInfoBad /✗.*$/
-  syntax match SonarLintInfoGood /✓/
-  highlight default link SonarLintInfoTitle Title
-  highlight default link SonarLintInfoBad ErrorMsg
-  highlight default link SonarLintInfoGood DiffAdd
+  setbufvar(old, '&modifiable', false)
+  win_execute(winid, 'normal! gg')
 enddef
