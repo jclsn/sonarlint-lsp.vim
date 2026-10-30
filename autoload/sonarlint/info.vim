@@ -126,6 +126,7 @@ def LogSection(lspserver: dict<any>): list<string>
     ->copy()
     ->filter((_, m) => m =~ '\[\%(Error\|Warn\) - ')
     ->map((_, m) => m->substitute('^\(\S\+ \S\+\): \[\a\+\]: \[\(\a\+\) - [^]]*\] \%(\[[^]]*\] \)\=', '\1 \2: ', ''))
+    ->map((_, m) => m->substitute('\s\+$', '', ''))
   # The same error repeats on every analysis; keep the latest of each.
   var seen: dict<bool> = {}
   var unique: list<string> = []
@@ -156,10 +157,22 @@ enddef
 export def Show()
   var lines = Report(server.Get(), bufnr())
   var old = bufnr(BUFNAME)
+  # Refresh a visible report in place, keeping its split and size.
+  var winid = old > 0 ? bufwinid(old) : -1
+  if winid > 0
+    setbufvar(old, '&modifiable', true)
+    setbufline(old, 1, lines)
+    if getbufinfo(old)[0].linecount > lines->len()
+      deletebufline(old, lines->len() + 1, '$')
+    endif
+    setbufvar(old, '&modifiable', false)
+    win_execute(winid, 'normal! gg')
+    return
+  endif
   if old > 0
     execute $'bwipeout {old}'
   endif
-  execute $'botright :{min([lines->len(), &lines / 2])}new'
+  execute $'botright vertical :new'
   setlocal buftype=nofile bufhidden=wipe noswapfile nobuflisted nowrap
   execute $'silent file {BUFNAME}'
   setline(1, lines)
